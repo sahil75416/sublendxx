@@ -8,6 +8,7 @@ import {
   isBaseSepoliaNetwork,
   switchToBaseSepolia,
   weiToUsdc,
+  RENTAL_ESCROW_ADDRESS,
 } from './contracts';
 import { parseUnits } from 'ethers';
 
@@ -145,12 +146,16 @@ export const createRental = async (
 ) => {
   try {
     // Connect wallet
+    console.log('🔗 Connecting wallet...');
     const { signer, provider, rawProvider } = await connectWallet();
     
     // Check network
+    console.log('🌐 Checking network...');
     const isCorrectNetwork = await isBaseSepoliaNetwork(provider);
     if (!isCorrectNetwork) {
+      console.log('⚠️  Wrong network, switching to Ethereum Sepolia...');
       await switchToBaseSepolia(rawProvider);
+      console.log('✅ Switched to Ethereum Sepolia');
     }
     
     // Get contracts
@@ -159,36 +164,83 @@ export const createRental = async (
     
     // Get borrower address
     const borrowerAddress = await signer.getAddress();
+    console.log('👤 Borrower address:', borrowerAddress);
     
     // Convert price to wei (USDC has 6 decimals)
     const amountWei = parseUnits(totalPrice.toString(), 6);
+    console.log('💰 Amount to pay (wei):', amountWei.toString());
     
     // Check USDC balance
+    console.log('💵 Checking USDC balance...');
     const balance = await usdcContract.balanceOf(borrowerAddress);
+    console.log('💵 Current balance:', weiToUsdc(balance), 'USDC');
+    
     if (balance < amountWei) {
       throw new Error(`Insufficient USDC balance. You need ${totalPrice} USDC but have ${weiToUsdc(balance)} USDC`);
     }
     
-    // Approve USDC spending
-    const approveTx = await approveUSDC(signer, amountWei);
-    console.log('USDC approved:', approveTx);
+    // Check current allowance
+    console.log('🔍 Checking current USDC allowance...');
+    const currentAllowance = await usdcContract.allowance(borrowerAddress, RENTAL_ESCROW_ADDRESS);
+    console.log('🔍 Current allowance:', weiToUsdc(currentAllowance), 'USDC');
+    
+    // Only approve if current allowance is insufficient
+    if (currentAllowance < amountWei) {
+      console.log('✍️  Approving USDC spending...');
+      const approveTx = await approveUSDC(signer, amountWei);
+      console.log('✅ USDC approved, tx hash:', approveTx);
+      
+      // Wait a moment to ensure approval is fully propagated
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Verify the approval went through
+      const newAllowance = await usdcContract.allowance(borrowerAddress, RENTAL_ESCROW_ADDRESS);
+      console.log('🔍 New allowance after approval:', weiToUsdc(newAllowance), 'USDC');
+      
+      if (newAllowance < amountWei) {
+        throw new Error('Approval failed. Please try again.');
+      }
+    } else {
+      console.log('✅ Sufficient allowance already exists, skipping approval');
+    }
     
     // Create rental
+    console.log('📝 Creating rental on blockchain...');
     const tx = await rentalEscrowContract.createRental(
       tokenId,
       borrowerAddress,
       durationInMinutes
     );
     
+    console.log('📝 Transaction sent:', tx.hash);
+    console.log('⏳ Waiting for confirmation...');
+    
     const receipt = await tx.wait();
+    console.log('✅ Rental created successfully!');
     
     return {
       success: true,
       transactionHash: receipt.hash,
     };
   } catch (error: any) {
-    console.error('Error creating rental:', error);
-    throw new Error(error.message || 'Failed to create rental');
+    console.error('❌ Error creating rental:', error);
+    
+    // Provide more specific error messages
+    let errorMessage = 'Failed to create rental';
+    
+    if (error.message?.includes('user rejected')) {
+      errorMessage = 'Transaction cancelled by user';
+    } else if (error.message?.includes('insufficient funds')) {
+      errorMessage = 'Insufficient ETH for gas fees';
+    } else if (error.message?.includes('exceeds allowance')) {
+      errorMessage = 'USDC approval failed. Please try again.';
+    } else if (error.message?.includes('Insufficient USDC')) {
+      errorMessage = error.message;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    throw new Error(errorMessage);
   }
 };
 

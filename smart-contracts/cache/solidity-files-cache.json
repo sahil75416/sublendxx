@@ -870,8 +870,8 @@
       ]
     },
     "D:\\project_lend\\smart-contracts\\contracts\\RentalEscrow.sol": {
-      "lastModificationDate": 1759952327336,
-      "contentHash": "9bef42e20aad06ac1bb93bdd92815562",
+      "lastModificationDate": 1760104600566,
+      "contentHash": "ab7d4c48b821a46850faeda43a24c7ca",
       "sourceName": "contracts/RentalEscrow.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -912,8 +912,8 @@
       ]
     },
     "D:\\project_lend\\smart-contracts\\contracts\\MockUSDC.sol": {
-      "lastModificationDate": 1760084628411,
-      "contentHash": "49552274da00e15bcaaa092e2efde1d5",
+      "lastModificationDate": 1760090160875,
+      "contentHash": "ccdd1d6bd9b4a3e353ce1abc41f1e660",
       "sourceName": "contracts/MockUSDC.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -940,7 +940,8 @@
         }
       },
       "imports": [
-        "@openzeppelin/contracts/token/ERC20/ERC20.sol"
+        "@openzeppelin/contracts/token/ERC20/ERC20.sol",
+        "@openzeppelin/contracts/access/Ownable.sol"
       ],
       "versionPragmas": [
         "^0.8.20"

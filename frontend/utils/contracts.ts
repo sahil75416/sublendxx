@@ -28,6 +28,7 @@ export const RENTAL_ESCROW_ABI = [
 
 export const MOCK_USDC_ABI = [
   "function approve(address spender, uint256 amount) external returns (bool)",
+  "function allowance(address owner, address spender) external view returns (uint256)",
   "function transfer(address to, uint256 amount) external returns (bool)",
   "function balanceOf(address account) external view returns (uint256)",
   "function mint(address to, uint256 amount) external",
